@@ -1,11 +1,15 @@
 from robot.utils import ConnectionCache
 from robot.api import logger
 
+from pysphere import *
 import os.path
 import sys
 import time
 
 from pysphere import VIServer
+from pysphere.resources import VimService_services as VI 
+from pysphere.vi_task import VITask 
+import ssl
 
 from .version import VERSION
 
@@ -13,20 +17,19 @@ class PysphereLibrary(object):
     """Robot Framework test library for VMWare interaction
 
     The library has the following main usages:
-    - Identifying available virtual machines on a vCenter or
+    - Identifying available virtual machines on a vCenter or 
       ESXi host
     - Starting and stopping VMs
     - Shutting down, rebooting VM guest OS
     - Checking VM status
-    - Waiting for VM tools to start running
+	- Waiting for VM tools to start running                                	   
     - Reverting VMs to a snapshot
     - Retrieving basic VM properties
-    - File upload, deletion and relocation
+	- File upload, deletion and relocation
     - Directory creation, deletion and relocation
     - Process execution and termination
-
     This library is essentially a wrapper around Pysphere
-    http://code.google.com/p/pysphere/ adding connection
+    http://code.google.com/p/pysphere/ adding connection 
     caching consistent with other Robot Framework libraries.
     """
 
@@ -37,7 +40,7 @@ class PysphereLibrary(object):
         """
         """
         self._connections = ConnectionCache()
-        self._vm_cache = {}
+        self._vm_cache = {}                   
 
 
     def open_pysphere_connection(self, host, user, password, alias=None):
@@ -52,13 +55,15 @@ class PysphereLibrary(object):
         and are reset when `Close All Pysphere Connections` is called.
 
         An optional `alias` can be supplied for the connection and used
-        for switching between connections. See `Switch Pysphere
+        for switching between connections. See `Switch Pysphere 
         Connection` for details.
 
         Example:
         | ${index}= | Open Pysphere Connection | my.vcenter.server.com | username | password | alias=myserver |
         """
         server = VIServer()
+        default_context = ssl._create_default_https_context
+        ssl._create_default_https_context = ssl._create_unverified_context
         server.connect(host, user, password)
         connection_index = self._connections.register(server, alias)
         logger.info("Pysphere connection opened to host {}".format(host))
@@ -131,19 +136,18 @@ class PysphereLibrary(object):
         | Open Pysphere Connection | myotherhost | myuser | mypassword | alias=otherhost |
         | Switch Pysphere Connection | ${myserver} |
         | Power On Vm | myvm |
-        | Switch Pysphere Connection | otherhost |
+        | Switch Pysphere Connection | otherhost | 
         | Power On Vm | myothervm |
-        | [Teardown] | Close All Pysphere Connections |
+        | [Teardown] | Close All Pysphere Connections | 
         """
         self._connections.close_all(closer_method='disconnect')
-        self._vm_cache = {}
+                           
         logger.info("All pysphere connections closed.")
 
 
     def get_vm_names(self):
         """Returns a list of all registered VMs for the
         currently active connection.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | @{vm_names}= | Get Vm Names |
@@ -152,7 +156,7 @@ class PysphereLibrary(object):
 
 
     def get_vm_properties(self, name):
-        """Returns a dictionary of the properties
+        """Returns a dictionary of the properties 
         associated with the named VM.
         """
         vm = self._get_vm(name)
@@ -172,21 +176,22 @@ class PysphereLibrary(object):
             logger.info(u"VM {} was already powered on.".format(name))
 
 
+
     def power_off_vm(self, name):
         """Power off the vm if it is not
-        already powered off. This method blocks
+        already powered off. This method blocks 
         until the operation is completed.
-        """
+        """        
         if not self.vm_is_powered_off(name):
             vm = self._get_vm(name)
-            vm.power_off()
+            vm.power_off()   
             logger.info(u"VM {} powered off.".format(name))
         else:
             logger.info(u"VM {} was already powered off.".format(name))
-
+        
 
     def reset_vm(self, name):
-        """Perform a reset on the VM. This
+        """Perform a reset on the VM. This 
         method blocks until the operation is
         completed.
         """
@@ -196,8 +201,8 @@ class PysphereLibrary(object):
 
 
     def shutdown_vm_os(self, name):
-        """Initiate a shutdown in the guest OS
-        in the VM, returning immediately.
+        """Initiate a shutdown in the guest OS 
+        in the VM, returning immediately. 
         """
         vm = self._get_vm(name)
         vm.shutdown_guest()
@@ -205,8 +210,8 @@ class PysphereLibrary(object):
 
 
     def reboot_vm_os(self, name):
-        """Initiate a reboot in the guest OS
-        in the VM, returning immediately.
+        """Initiate a reboot in the guest OS 
+        in the VM, returning immediately. 
         """
         vm = self._get_vm(name)
         vm.reboot_guest()
@@ -214,19 +219,19 @@ class PysphereLibrary(object):
 
 
     def vm_is_powered_on(self, name):
-        """Returns true if the VM is in the
+        """Returns true if the VM is in the 
         powered on state.
         """
         vm = self._get_vm(name)
-        return vm.is_powered_on()
+        return vm.is_powered_on()          
 
 
     def vm_is_powered_off(self, name):
-        """Returns true if the VM is in the
+        """Returns true if the VM is in the 
         powered off state.
         """
         vm = self._get_vm(name)
-        return vm.is_powered_off()
+        return vm.is_powered_off()         
 
 
     def vm_wait_for_tools(self, name, timeout=120):
@@ -243,7 +248,6 @@ class PysphereLibrary(object):
         """Logs into the named VM with the specified `username` and `password`.
         The VM must be powered on and the VM tools must be running on the VM,
         which can be verified using the `Vm Wait For Tools` keyword.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Power On Vm | myvm |
@@ -258,7 +262,6 @@ class PysphereLibrary(object):
     def vm_make_directory(self, name, path):
         """Creates a directory with the specified `path` on the named VM. The
         `Vm Login In Guest` keyword must precede this keyword.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Vm Login In Guest | myvm | vm_username | vm_password |
@@ -272,7 +275,6 @@ class PysphereLibrary(object):
     def vm_move_directory(self, name, src_path, dst_path):
         """Moves or renames a directory from `src_path` to `dst_path` on the
         named VM. The `Vm Login In Guest` keyword must precede this keyword.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Vm Login In Guest | myvm | vm_username | vm_password |
@@ -288,7 +290,6 @@ class PysphereLibrary(object):
         """Deletes the directory with the given `path` on the named VM,
         including its contents. The `Vm Login In Guest` keyword must precede
         this keyword.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Vm Login In Guest | myvm | vm_username | vm_password |
@@ -303,7 +304,6 @@ class PysphereLibrary(object):
         """Downloads a file from the `remote_path` on the named VM to the
         specified `local_path`, overwriting any existing local file. The
         `Vm Login In Guest` keyword must precede this keyword.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Vm Login In Guest | myvm | vm_username | vm_password |
@@ -319,7 +319,6 @@ class PysphereLibrary(object):
         """Uploads a file from `local_path` to the specified `remote_path` on
         the named VM, overwriting any existing remote file. The
         `Vm Login In Guest` keyword must precede this keyword.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Vm Login In Guest | myvm | vm_username | vm_password |
@@ -338,7 +337,6 @@ class PysphereLibrary(object):
         """Moves a remote file on the named VM from `src_path` to `dst_path`,
         overwriting any existing file at the target location. The
         `Vm Login In Guest` keyword must precede this keyword.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Vm Login In Guest | myvm | vm_username | vm_password |
@@ -353,7 +351,6 @@ class PysphereLibrary(object):
     def vm_delete_file(self, name, remote_path):
         """Deletes the file with the given `remote_path` on the named VM. The
         `Vm Login In Guest` keyword must precede this keyword.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Vm Login In Guest | myvm | vm_username | vm_password |
@@ -368,11 +365,9 @@ class PysphereLibrary(object):
         """Starts a program in the named VM with the working directory specified
         by `cwd`. Returns the process PID. The `Vm Login In Guest` keyword must
         precede this keyword.
-
         The optional `env` argument can be used to provide a dictionary
         containing environment variables to be set for the program
         being run.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Vm Login In Guest | myvm | vm_username | vm_password |
@@ -393,7 +388,6 @@ class PysphereLibrary(object):
         completed. Parameters are the same as for `vm_start_process`. Returns
         the exit code of the process. The `Vm Login In Guest` keyword must
         precede this keyword.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Vm Login In Guest | myvm | vm_username | vm_password |
@@ -421,7 +415,6 @@ class PysphereLibrary(object):
     def vm_terminate_process(self, name, pid):
         """Terminates the process with the given `pid` on the named VM. The
         `Vm Login In Guest` keyword must precede this keyword.
-
         Example:
         | Open Pysphere Connection | myhost | myuser | mypassword |
         | Vm Login In Guest | myvm | vm_username | vm_password |
@@ -449,9 +442,30 @@ class PysphereLibrary(object):
             logger.info(u"VM {} reverted to snapshot {}.".format(
                 name, snapshot_name))
 
+    def destroy_vm(self, name):
+        """Destroy a VM
+        """
+        
+        vm = self._get_vm(name)
+        s = self._connections.current
+        
+        request = VI.Destroy_TaskRequestMsg() 
+        _this = request.new__this(vm._mor) 
+        _this.set_attribute_type(vm._mor.get_attribute_type()) 
+        request.set_element__this(_this) 
+        ret = s._proxy.Destroy_Task(request)._returnval 
 
+        
+        task = VITask(ret, s) 
+
+        status = task.wait_for_state([task.STATE_SUCCESS, task.STATE_ERROR]) 
+        if status == task.STATE_SUCCESS: 
+        	logger.info("VM successfully deleted from disk") 
+        elif status == task.STATE_ERROR: 
+        	logger.error("Error removing vm:", task.get_error_message())
+	
     def _get_vm(self, name):
-        if name not in self._vm_cache or not self._vm_cache[name]._server.keep_session_alive():
+	if name not in self._vm_cache or not self._vm_cache[name]._server.keep_session_alive():
             logger.debug(u"VM {} not in cache or vcenter connection expired.".format(name))
         connection = self._connections.current
         if isinstance(name, unicode):
@@ -461,4 +475,3 @@ class PysphereLibrary(object):
             logger.debug(u"VM {} already in cache.".format(name))
 
         return self._vm_cache[name]
-
